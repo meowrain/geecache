@@ -26,6 +26,8 @@ func TestGetter(t *testing.T) {
 			}
 			return nil, fmt.Errorf("%s not exist", key)
 		}))
+	geek := GetGroup("scores")
+	fmt.Println(geek)
 	for k, v := range db {
 		if view, err := gee.Get(k); err != nil || view.String() != v {
 			t.Fatal("failed to get value of Tom")
