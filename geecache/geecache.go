@@ -30,19 +30,36 @@ var (
 	groups = make(map[string]*Group)
 )
 
-func NewGroup(name string) *Group {
-	mu.RLock()
-	g := groups[name]
-	mu.RUnlock()
+func NewGroup(name string, cacheBytes int64, getter Getter) *Group {
+	if getter == nil {
+		panic("nil Getter")
+	}
+	mu.Lock()
+	defer mu.Unlock()
+	g := &Group{
+		name:      name,
+		getter:    getter,
+		mainCache: cache{cacheBytes: cacheBytes},
+	}
+	groups[name] = g
 	return g
 }
-
+func GetGroup(name string) *Group {
+	mu.RLock()
+	defer mu.RUnlock()
+	g, ok := groups[name]
+	if !ok {
+		return nil
+	}
+	return g
+}
 func (g *Group) Get(key string) (ByteView, error) {
 	if key == "" {
 		return ByteView{}, fmt.Errorf("key is required")
 	}
 	// mainCache中存在，直接获取返回
 	if v, ok := g.mainCache.get(key); ok {
+
 		return v, nil
 	}
 	// 如果不存在，加载
@@ -55,6 +72,7 @@ func (g *Group) load(key string) (ByteView, error) {
 }
 
 func (g *Group) getLocally(key string) (ByteView, error) {
+	// 调用Getter
 	bytes, err := g.getter.Get(key)
 	if err != nil {
 		return ByteView{}, err
