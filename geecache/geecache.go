@@ -15,6 +15,7 @@ type Group struct {
 	name      string
 	getter    Getter
 	mainCache cache
+	peers     PeerPicker
 }
 
 // 缓存不存在的时候，调用这个接口，获取源数据
@@ -49,6 +50,21 @@ func GetGroup(name string) *Group {
 	return g
 }
 
+func (g *Group) load(key string) (value ByteView, err error) {
+	if g.peers != nil {
+		// 先根据key选择对应的peer
+		if peer, ok := g.peers.PickPeer(key); ok {
+			// 然后从这个peer取出结果
+			if value, err = g.getFromPeer(peer, key); err == nil {
+				return value, nil
+			}
+			log.Println("[MikuCache] Failed to get from peer", err)
+		}
+	}
+	// 取本地的了
+	return g.getLocally(key)
+}
+
 func (g *Group) Get(key string) (ByteView, error) {
 	if key == "" {
 		return ByteView{}, fmt.Errorf("key is required")
@@ -60,10 +76,6 @@ func (g *Group) Get(key string) (ByteView, error) {
 	}
 	// mainCache中找不到就去load
 	return g.load(key)
-}
-
-func (g *Group) load(key string) (value ByteView, err error) {
-	return g.getLocally(key)
 }
 
 func (g *Group) getLocally(key string) (ByteView, error) {
@@ -78,7 +90,26 @@ func (g *Group) getLocally(key string) (ByteView, error) {
 	return value, nil
 }
 
+// 将key和value添加到缓存中
 func (g *Group) populateCache(key string, value ByteView) {
-	// 将key和value添加到缓存中
+
 	g.mainCache.add(key, value)
+}
+
+// 注册Peer
+func (g *Group) RegisterPeers(peers PeerPicker) {
+	// 不能注册一次以上
+	if g.peers != nil {
+		panic("RegisterPeerPicker called more than once")
+	}
+	g.peers = peers
+}
+
+// 从peer取数据
+func (g *Group) getFromPeer(peer PeerGetter, key string) (ByteView, error) {
+	bytes, err := peer.Get(g.name, key)
+	if err != nil {
+		return ByteView{}, err
+	}
+	return ByteView{b: bytes}, nil
 }
