@@ -1,7 +1,7 @@
 package geecache_test
 
 import (
-	"geecache"
+	"mikucache/geecache"
 	"testing"
 )
 

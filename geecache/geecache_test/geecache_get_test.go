@@ -2,7 +2,7 @@ package geecache_test
 
 import (
 	"fmt"
-	"geecache"
+	"mikucache/geecache"
 	"testing"
 )
 

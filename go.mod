@@ -1,3 +1,3 @@
-module geecache
+module mikucache
 
 go 1.24.1
