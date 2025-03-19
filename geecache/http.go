@@ -4,21 +4,29 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"mikucache/consistenthash"
 	"net/http"
 	"net/url"
 	"strings"
+	"sync"
 )
 
-const defaultBasePath = "/_geecache/"
+const (
+	defaultBasePath = "/_geecache/"
+	defaultReplicas = 50
+)
 
 type HTTPPool struct {
-	self     string
-	basePath string
+	self        string
+	basePath    string
+	mu          sync.Mutex
+	peers       *consistenthash.Map    // 一致性哈希算法的map，用来根据key选择节点
+	httpGetters map[string]*httpGetter // 每一个远程节点对应一个http客户端
 }
 
 func NewHTTPPool(self string) *HTTPPool {
 	return &HTTPPool{
-		self:     self,
+		self:     self, // 启动服务器的url
 		basePath: defaultBasePath,
 	}
 }
@@ -55,12 +63,40 @@ func (p *HTTPPool) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Write(view.ByteSlice())
 }
 
+func (p *HTTPPool) Set(peers ...string) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	// 创建一致性哈希map，虚拟节点数设置为默认的50，算法采用默认的crc32.ChecksumIEEE
+	p.peers = consistenthash.New(defaultReplicas, nil)
+	p.peers.Add(peers...)
+	p.httpGetters = make(map[string]*httpGetter, len(peers))
+	for _, peer := range peers {
+		p.httpGetters[peer] = NewhtthttpGetter(peer, p.basePath)
+	}
+}
+
+// 提供根据选择的key 创建HTTP客户端从远程节点获取缓存只的能力
+func (p *HTTPPool) PickPeer(key string) (PeerGetter, bool) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if peer := p.peers.Get(key); peer != "" && peer != p.self {
+		p.Log("Pick peer %s", peer)
+		return p.httpGetters[peer], true
+	}
+	return nil, false
+}
+
 // ---------------------Add httpGetter 实现http客户端功能--------------------
 
 type httpGetter struct {
-	baseURL string
+	baseURL string // 要访问的远程节点的地址
 }
 
+func NewhtthttpGetter(node string, baseUrl string) *httpGetter {
+	return &httpGetter{
+		baseURL: node + baseUrl,
+	}
+}
 func (h *httpGetter) Get(group string, key string) ([]byte, error) {
 	/*
 			url.QueryEscape 它的主要作用是：

@@ -1,7 +1,6 @@
 package consistenthash
 
 import (
-	"fmt"
 	"hash/crc32"
 	"sort"
 	"strconv"
@@ -33,16 +32,16 @@ func (m *Map) Add(keys ...string) {
 	for _, key := range keys {
 		for i := 0; i < m.replicas; i++ {
 			hash := int(m.hash([]byte(strconv.Itoa(i) + key)))
-			fmt.Println("hash result: ", hash)
+			// fmt.Println("hash result: ", hash)
 			m.keys = append(m.keys, hash)
 			m.hashMap[hash] = key
 		}
 	}
 	sort.Ints(m.keys)
-	fmt.Println("m.keys: ", m.keys)
+	// fmt.Println("m.keys: ", m.keys)
 }
 
-// 选择节点
+// 选择节点,返回key要存到的节点
 func (m *Map) Get(key string) string {
 	if len(m.keys) == 0 {
 		return ""
@@ -51,7 +50,7 @@ func (m *Map) Get(key string) string {
 	idx := sort.Search(len(m.keys), func(i int) bool {
 		return m.keys[i] >= hash
 	})
-	fmt.Println("idx: ", idx)
-	fmt.Println(m.hashMap)
+	// fmt.Println("idx: ", idx)
+	// fmt.Println(m.hashMap)
 	return m.hashMap[m.keys[idx%len(m.keys)]]
 }
