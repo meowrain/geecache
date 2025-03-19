@@ -1,4 +1,4 @@
-package geecachetest_test
+package geecache_test
 
 import (
 	"geecache"

@@ -1,6 +1,8 @@
 package lru
 
-import "container/list"
+import (
+	"container/list"
+)
 
 type Cache struct {
 	maxBytes int64
@@ -45,11 +47,6 @@ func (c *Cache) Add(key string, value Value) {
 		node := &entry{
 			key:   key,
 			value: value,
-		}
-		nodeSize := int64(len(key)) + int64(value.Len())
-		if nodeSize > c.maxBytes {
-			// 如果这个节点的大小大于最大内存，那就不添加了
-			return
 		}
 		// PushFront会返回一个*list.Element 也就是会把*entry转换为*list.Element，存储在链表中
 		ele := c.ll.PushFront(node)

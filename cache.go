@@ -20,15 +20,14 @@ func (c *cache) add(key string, value ByteView) {
 	c.lru.Add(key, value)
 }
 
-func (c *cache) get(key string) (value ByteView, ok bool) {
+func (c *cache) get(key string) (ByteView, bool) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	if c.lru == nil {
-		return
+		return ByteView{}, false
 	}
 	if v, ok := c.lru.Get(key); ok {
-		value = v.(ByteView)
-		ok = true
+		return v.(ByteView), ok
 	}
-	return
+	return ByteView{}, false
 }
