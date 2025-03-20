@@ -37,7 +37,8 @@ func (p *HTTPPool) Log(format string, v ...any) {
 
 func (p *HTTPPool) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if !strings.HasPrefix(r.URL.Path, p.basePath) {
-		panic("HTTPPool serving unexpected path: " + r.URL.Path)
+		http.Error(w, "Unexpected path: "+r.URL.Path, http.StatusNotFound)
+		return
 	}
 	p.Log("%s %s", r.Method, r.URL.Path)
 
