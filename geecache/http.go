@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"io"
 	"log"
-	"mikucache/consistenthash"
+	"mikucache/geecache/consistenthash"
 	"mikucache/geecache/geecachepb"
 	"net/http"
 	"net/url"

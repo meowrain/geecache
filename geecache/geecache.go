@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"log"
 	"mikucache/geecache/geecachepb"
-	"mikucache/singleflight"
+	"mikucache/geecache/singleflight"
 	"sync"
 )
 
