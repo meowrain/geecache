@@ -3,6 +3,7 @@ package geecache
 import (
 	"fmt"
 	"log"
+	"mikucache/geecache/geecachepb"
 	"mikucache/singleflight"
 	"sync"
 )
@@ -89,7 +90,6 @@ func (g *Group) load(key string) (value ByteView, err error) {
 	return
 }
 
-
 func (g *Group) getLocally(key string) (ByteView, error) {
 	// 通过getter方法去获取key对应的value
 	bytes, err := g.getter.Get(key)
@@ -119,9 +119,14 @@ func (g *Group) RegisterPeers(peers PeerPicker) {
 
 // 从peer取数据
 func (g *Group) getFromPeer(peer PeerGetter, key string) (ByteView, error) {
-	bytes, err := peer.Get(g.name, key)
+	req := &geecachepb.Request{
+		Group: g.name,
+		Key:   key,
+	}
+	res := &geecachepb.Response{}
+	err := peer.Get(req, res)
 	if err != nil {
 		return ByteView{}, err
 	}
-	return ByteView{b: bytes}, nil
+	return ByteView{b: res.Value}, nil
 }

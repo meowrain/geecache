@@ -1,7 +1,6 @@
 package singleflight
 
 import (
-	"log"
 	"sync"
 )
 
@@ -33,7 +32,6 @@ func (g *Group) Do(key string, fn func() (any, error)) (any, error) {
 		g.m = make(map[string]*call)
 	}
 	if c, ok := g.m[key]; ok {
-		log.Printf("有请求正在进行: key = %s", key)
 		g.mu.Unlock()
 		c.wg.Wait()
 		return c.val, c.err
@@ -43,7 +41,6 @@ func (g *Group) Do(key string, fn func() (any, error)) (any, error) {
 	g.m[key] = c
 	g.mu.Unlock()
 
-	log.Printf("开始执行请求: key = %s", key)
 	c.val, c.err = fn()
 	c.wg.Done()
 
@@ -51,6 +48,5 @@ func (g *Group) Do(key string, fn func() (any, error)) (any, error) {
 	delete(g.m, key)
 	g.mu.Unlock()
 
-	log.Printf("请求完成: key = %s", key)
 	return c.val, c.err
 }
