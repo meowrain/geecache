@@ -6,6 +6,9 @@ import (
 	"log"
 	"mikucache/geecache"
 	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
 )
 
 var db = map[string]string{
@@ -52,6 +55,15 @@ func startAPIServer(apiAddr string, gee *geecache.Group) {
 	log.Fatal(http.ListenAndServe(apiAddr[7:], nil))
 }
 func main() {
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+
+	go func() {
+		<-sigChan
+		log.Println("Received interrupt signal,shutting down...")
+		os.Exit(0)
+	}()
+
 	var port int
 	var api bool
 	flag.IntVar(&port, "port", 8001, "Geecache server port")

@@ -1,2 +1,2 @@
 #!/bin/bash
-pkill mikucache
+pkill mikucache-linux
