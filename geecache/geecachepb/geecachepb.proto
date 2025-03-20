@@ -1,0 +1,24 @@
+syntax = "proto3";
+package geecachepb;
+option go_package = "geecache/geecachepb";
+/*
+定义一个名为Request的消息类型,用于向缓存服务发送请求
+*/
+message Request {
+    string group = 1; // 表示缓存组的名称
+    string key = 2; // 表示要获取的缓存键
+}
+
+/*
+定义一个名为Response的消息类型，用于从缓存服务器接收响应
+*/
+message Response {
+    bytes value = 1; // 表示返回的缓存值
+}
+
+service GroupCache{
+    // 定义一个名为Get的RPC方法，用来获取缓存值
+    rpc Get(Request) returns (Response);
+}
+
+//protoc --go_out=. --go-grpc_out=. geecache/geecachepb/geecachepb.proto
