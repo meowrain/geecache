@@ -3,6 +3,7 @@ package geecache
 import (
 	"fmt"
 	"log"
+	"mikucache/singleflight"
 	"sync"
 )
 
@@ -16,6 +17,8 @@ type Group struct {
 	getter    Getter
 	mainCache cache
 	peers     PeerPicker
+	// 使用singleflight.Group确保并发场景下针对相同的key，load过程只会调用一次
+	loader *singleflight.Group
 }
 
 // 缓存不存在的时候，调用这个接口，获取源数据
@@ -38,6 +41,7 @@ func NewGroup(name string, cacheBytes int64, getter Getter) *Group {
 		name:      name,
 		getter:    getter,
 		mainCache: cache{cacheBytes: cacheBytes},
+		loader:    singleflight.NewGroup(),
 	}
 	groups[name] = g
 	return g
@@ -48,21 +52,6 @@ func GetGroup(name string) *Group {
 	g := groups[name]
 	mu.RUnlock()
 	return g
-}
-
-func (g *Group) load(key string) (value ByteView, err error) {
-	if g.peers != nil {
-		// 先根据key选择对应的peer
-		if peer, ok := g.peers.PickPeer(key); ok {
-			// 然后从这个peer取出结果
-			if value, err = g.getFromPeer(peer, key); err == nil {
-				return value, nil
-			}
-			log.Println("[MikuCache] Failed to get from peer", err)
-		}
-	}
-	// 取本地的了
-	return g.getLocally(key)
 }
 
 func (g *Group) Get(key string) (ByteView, error) {
@@ -77,6 +66,29 @@ func (g *Group) Get(key string) (ByteView, error) {
 	// mainCache中找不到就去load
 	return g.load(key)
 }
+func (g *Group) load(key string) (value ByteView, err error) {
+	// 每个key只请求一次 不管是本地还是远程
+	// 并发场景下针对相同的key，load过程只会调用一次
+	view, err := g.loader.Do(key, func() (any, error) {
+		if g.peers != nil {
+			// 先根据key选择对应的peer
+			if peer, ok := g.peers.PickPeer(key); ok {
+				// 然后从这个peer取出结果
+				if value, err = g.getFromPeer(peer, key); err == nil {
+					return value, nil
+				}
+				log.Println("[MikuCache] Failed to get from peer", err)
+			}
+		}
+		// 取本地的了
+		return g.getLocally(key)
+	})
+	if err == nil {
+		return view.(ByteView), nil
+	}
+	return
+}
+
 
 func (g *Group) getLocally(key string) (ByteView, error) {
 	// 通过getter方法去获取key对应的value
